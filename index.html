@@ -361,7 +361,7 @@ function previewOrder() {
 
   const orderLinesHtml = orderLines.replace(/\n/g, '<br>');
   pendingOrder = { senderName: sender, dept, senderEmail: email, dueDate: due, shipTo, notes, poNumber, orderLines: orderLinesHtml, cc: email };
-  pendingOrder._poFiles = poFiles;
+  pendingOrder._poFiles = poFiles; // stored locally only, not sent to flow
 
 
   document.getElementById("previewContent").textContent = orderLines;
@@ -390,6 +390,7 @@ async function confirmSend() {
       xhr.onerror = function() { resolve(); }; // resolve anyway, no-cors expected
       const payload = { senderName: pendingOrder.senderName, dept: pendingOrder.dept, senderEmail: pendingOrder.senderEmail, dueDate: pendingOrder.dueDate, shipTo: pendingOrder.shipTo, notes: pendingOrder.notes, poNumber: pendingOrder.poNumber, orderLines: pendingOrder.orderLines, cc: pendingOrder.cc };
       console.log("Sending payload:", JSON.stringify(payload));
+      console.log("Payload length:", JSON.stringify(payload).length);
       xhr.send(JSON.stringify(payload));
     });
     const hadFiles = pendingOrder._poFiles && pendingOrder._poFiles.length > 0;
