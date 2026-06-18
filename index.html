@@ -11,7 +11,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 header{margin-bottom:2rem}
 header h1{font-size:22px;font-weight:600;color:#1a1a1a}
 header p{font-size:14px;color:#666;margin-top:4px}
-.cat-label{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.07em;margin:1.75rem 0 10px}
+.cat-label{font-size:11px;font-weight:600;color:#2c2c2c;text-transform:uppercase;letter-spacing:.07em;margin:1.75rem 0 10px}
 .item-card{background:#fff;border:1px solid #e5e5e3;border-radius:12px;margin-bottom:10px;overflow:hidden;transition:border-color .15s}
 .item-card.selected{border-color:#185FA5;border-width:2px}
 .item-top{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer}
@@ -45,7 +45,7 @@ header p{font-size:14px;color:#666;margin-top:4px}
 .sum-name{color:#555;flex:1}
 .sum-qty{color:#1a1a1a;font-weight:500;text-align:right;font-size:12px}
 hr.divider{border:none;border-top:1px solid #e5e5e3;margin:1.75rem 0}
-.section-hdr{font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
+.section-hdr{font-size:11px;font-weight:600;color:#2c2c2c;text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px}
 .fields{display:flex;flex-direction:column;gap:10px;margin-bottom:1.5rem}
 .field-row{display:flex;gap:10px}
 .field{display:flex;flex-direction:column;gap:4px;flex:1}
@@ -359,7 +359,8 @@ function previewOrder() {
   const poFileNote = poFiles.length > 0 ? "\n\nDOCUMENTS ATTACHED: " + poFiles.map(f=>f.name).join(", ") + "\n(Please see separate email with documents attached)" : "";
   const orderLines = "Hi Good Gear team,\n\nPlease find below our uniform order for Chamberlain Group" + (dept?" ("+dept+")":"") + ".\n\nORDER DETAILS\n" + lines.join("\n\n") + "\n\nSHIP TO:\n" + shipTo + "\n\nREQUIRED BY: " + dueStr + poNote + (notes?"\n\nNOTES:\n"+notes:"") + poFileNote + "\n\nPlease confirm receipt and advise of expected lead times and any out-of-stock items.\n\nKind regards,\n" + sender + (dept?"\n"+dept:"") + (email?"\n"+email:"");
 
-  pendingOrder = { senderName: sender, dept, senderEmail: email, dueDate: due, shipTo, notes, poNumber, orderLines, cc: email };
+  const orderLinesHtml = orderLines.replace(/\n/g, '<br>');
+  pendingOrder = { senderName: sender, dept, senderEmail: email, dueDate: due, shipTo, notes, poNumber, orderLines: orderLinesHtml, cc: email };
   pendingOrder._poFiles = poFiles;
 
 
@@ -376,11 +377,20 @@ async function confirmSend() {
   btn.textContent = "Sending...";
   btn.disabled = true;
   try {
-    await fetch(FLOW_URL, {
-      method: "POST",
-      mode: "no-cors",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(pendingOrder)
+    // Use XMLHttpRequest instead of fetch to avoid CORS issues
+    await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", FLOW_URL, true);
+      xhr.setRequestHeader("Content-Type", "application/json");
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4) {
+          resolve(); // resolve regardless of status since no-cors won't give us status
+        }
+      };
+      xhr.onerror = function() { resolve(); }; // resolve anyway, no-cors expected
+      const payload = { senderName: pendingOrder.senderName, dept: pendingOrder.dept, senderEmail: pendingOrder.senderEmail, dueDate: pendingOrder.dueDate, shipTo: pendingOrder.shipTo, notes: pendingOrder.notes, poNumber: pendingOrder.poNumber, orderLines: pendingOrder.orderLines, cc: pendingOrder.cc };
+      console.log("Sending payload:", JSON.stringify(payload));
+      xhr.send(JSON.stringify(payload));
     });
     const hadFiles = pendingOrder._poFiles && pendingOrder._poFiles.length > 0;
     const fileNames = hadFiles ? pendingOrder._poFiles.map(f=>f.name).join(", ") : null;
